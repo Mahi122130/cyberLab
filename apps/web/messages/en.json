@@ -1,0 +1,72 @@
+{
+  "Navigation": {
+    "dashboard": "Dashboard",
+    "learn": "Learn",
+    "labs": "Labs",
+    "challenges": "Challenges",
+    "ctf": "CTF Arena",
+    "leaderboard": "Leaderboard",
+    "achievements": "Achievements",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Log out"
+  },
+
+  "Dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "welcomeUser": "Welcome back, {username}",
+    "subtitle": "Continue your cybersecurity journey.",
+    "level": "Level",
+    "points": "Points",
+    "rank": "Rank",
+    "streak": "Day streak",
+
+    "continueLearning": "Continue learning",
+    "recommended": "Recommended for you",
+    "recentActivity": "Recent activity",
+    "yourProgress": "Your progress",
+
+    "labsCompleted": "Labs completed",
+    "challengesSolved": "Challenges solved",
+    "achievementsEarned": "Achievements earned",
+
+    "viewAll": "View all",
+    "startLab": "Start lab",
+    "continueLab": "Continue lab",
+    "viewProfile": "View profile"
+  },
+
+  "Profile": {
+    "title": "Profile",
+    "account": "Account",
+    "username": "Username",
+    "email": "Email",
+    "role": "Role",
+    "level": "Level",
+    "points": "Points",
+    "joined": "Joined",
+    "statistics": "Statistics",
+    "activity": "Activity"
+  },
+
+  "Labs": {
+    "title": "Security Labs",
+    "subtitle": "Practice cybersecurity through hands-on environments.",
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "start": "Start Lab",
+    "continue": "Continue",
+    "completed": "Completed"
+  },
+
+  "Common": {
+    "loading": "Loading...",
+    "error": "Something went wrong.",
+    "retry": "Try again",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}

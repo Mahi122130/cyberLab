@@ -1,0 +1,72 @@
+{
+  "Navigation": {
+    "dashboard": "ዳሽቦርድ",
+    "learn": "ትምህርት",
+    "labs": "ላቦራቶሪዎች",
+    "challenges": "ተግዳሮቶች",
+    "ctf": "CTF አሬና",
+    "leaderboard": "የደረጃ ሰንጠረዥ",
+    "achievements": "ሽልማቶች",
+    "profile": "መገለጫ",
+    "settings": "ቅንብሮች",
+    "logout": "ውጣ"
+  },
+
+  "Dashboard": {
+    "title": "ዳሽቦርድ",
+    "welcome": "እንኳን ደህና መጡ",
+    "welcomeUser": "እንኳን ደህና መጡ፣ {username}",
+    "subtitle": "የሳይበር ደህንነት ጉዞዎን ይቀጥሉ።",
+    "level": "ደረጃ",
+    "points": "ነጥቦች",
+    "rank": "ደረጃ",
+    "streak": "ተከታታይ ቀናት",
+
+    "continueLearning": "ትምህርትዎን ይቀጥሉ",
+    "recommended": "ለእርስዎ የሚመከር",
+    "recentActivity": "የቅርብ ጊዜ እንቅስቃሴ",
+    "yourProgress": "የእርስዎ እድገት",
+
+    "labsCompleted": "የተጠናቀቁ ላቦራቶሪዎች",
+    "challengesSolved": "የተፈቱ ተግዳሮቶች",
+    "achievementsEarned": "የተገኙ ሽልማቶች",
+
+    "viewAll": "ሁሉንም ይመልከቱ",
+    "startLab": "ላቦራቶሪ ጀምር",
+    "continueLab": "ቀጥል",
+    "viewProfile": "መገለጫ ይመልከቱ"
+  },
+
+  "Profile": {
+    "title": "መገለጫ",
+    "account": "መለያ",
+    "username": "የተጠቃሚ ስም",
+    "email": "ኢሜይል",
+    "role": "ሚና",
+    "level": "ደረጃ",
+    "points": "ነጥቦች",
+    "joined": "የተቀላቀለበት ቀን",
+    "statistics": "ስታቲስቲክስ",
+    "activity": "እንቅስቃሴ"
+  },
+
+  "Labs": {
+    "title": "የሳይበር ደህንነት ላቦራቶሪዎች",
+    "subtitle": "በተግባራዊ አካባቢዎች የሳይበር ደህንነትን ይለማመዱ።",
+    "beginner": "ጀማሪ",
+    "intermediate": "መካከለኛ",
+    "advanced": "ከፍተኛ",
+    "start": "ላቦራቶሪ ጀምር",
+    "continue": "ቀጥል",
+    "completed": "ተጠናቋል"
+  },
+
+  "Common": {
+    "loading": "በመጫን ላይ...",
+    "error": "አንድ ችግር ተፈጥሯል።",
+    "retry": "እንደገና ሞክር",
+    "back": "ተመለስ",
+    "save": "አስቀምጥ",
+    "cancel": "ሰርዝ"
+  }
+}

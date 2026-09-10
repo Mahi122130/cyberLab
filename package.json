@@ -1,0 +1,16 @@
+{
+  "name": "cyberlab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive cybersecurity training and attack-defense laboratory platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:api": "npm run start:dev --workspace=apps/api",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces"
+  }
+}
