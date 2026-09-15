@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -19,6 +18,11 @@ type LoginResponse = {
   success?: boolean;
   message?: string;
   user?: LoggedInUser;
+
+  // Backend returns accessToken
+  accessToken?: string;
+
+  // Keep these for compatibility
   access_token?: string;
   token?: string;
 };
@@ -67,7 +71,7 @@ export default function LoginPage() {
     |
     | .env.local:
     |
-    | NEXT_PUBLIC_API_URL=http://localhost:5001
+    | NEXT_PUBLIC_API_URL=http://localhost:5001/api/v1
     |
     | NestJS:
     |
@@ -77,12 +81,15 @@ export default function LoginPage() {
 
     const apiUrl =
       process.env.NEXT_PUBLIC_API_URL ||
-      "http://localhost:5001";
+      "http://localhost:5001/api/v1";
 
     const loginUrl = `${apiUrl}/auth/login`;
 
     try {
-      console.log("CyberLab login request:", loginUrl);
+      console.log(
+        "CyberLab login request:",
+        loginUrl,
+      );
 
       /*
       |--------------------------------------------------------------------------
@@ -184,10 +191,20 @@ export default function LoginPage() {
       |--------------------------------------------------------------------------
       | SAVE ACCESS TOKEN
       |--------------------------------------------------------------------------
+      |
+      | Backend returns:
+      |
+      | accessToken
+      |
+      | We also support access_token and token
+      | for compatibility.
+      |
       */
 
       const token =
-        data.access_token || data.token;
+        data.accessToken ||
+        data.access_token ||
+        data.token;
 
       if (
         token &&
@@ -210,6 +227,11 @@ export default function LoginPage() {
         data.user,
       );
 
+      console.log(
+        "CyberLab user role:",
+        data.user.role,
+      );
+
       setSuccess(
         `Welcome back, ${data.user.username}. Entering CyberLab...`,
       );
@@ -226,10 +248,18 @@ export default function LoginPage() {
       |--------------------------------------------------------------------------
       | REDIRECT
       |--------------------------------------------------------------------------
+      |
+      | ADMIN  -> /admin
+      | STUDENT -> /dashboard
+      |
       */
 
       setTimeout(() => {
-        router.replace("/dashboard");
+        if (data.user?.role === "ADMIN") {
+          router.replace("/admin");
+        } else {
+          router.replace("/dashboard");
+        }
       }, 700);
     } catch (err) {
       console.error(

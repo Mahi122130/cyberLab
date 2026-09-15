@@ -1,9 +1,60 @@
-
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("cyberlab_token");
+    const storedUser = localStorage.getItem("cyberlab_user");
+
+    // Not logged in
+    if (!token || !storedUser) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const user = JSON.parse(storedUser);
+
+      // Logged in but not an admin
+      if (user.role !== "ADMIN") {
+        router.replace("/dashboard");
+        return;
+      }
+
+      // Valid admin
+      setAuthorized(true);
+    } catch {
+      // Invalid stored user data
+      localStorage.removeItem("cyberlab_user");
+      localStorage.removeItem("cyberlab_token");
+
+      router.replace("/login");
+    }
+  }, [router]);
+
+  // Don't render the admin dashboard until authentication is checked
+  if (!authorized) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#05080d] text-white">
+        <div className="text-center">
+          <div className="font-mono text-xs tracking-[0.2em] text-emerald-400">
+            CYBERLAB
+          </div>
+
+          <div className="mt-3 font-mono text-[10px] text-gray-600">
+            VERIFYING ADMIN ACCESS...
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#05080d] text-white">
       {/* HEADER */}
