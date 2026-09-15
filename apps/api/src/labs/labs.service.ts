@@ -43,6 +43,11 @@ export type UpdateLabDto = {
 |--------------------------------------------------------------------------
 */
 
+export type ChallengeHintDto = {
+  hint_text: string;
+  hint_order?: number;
+};
+
 export type CreateChallengeDto = {
   title: string;
   description?: string;
@@ -51,6 +56,7 @@ export type CreateChallengeDto = {
   points: number;
   order_number?: number;
   is_active?: boolean | number;
+  hints?: ChallengeHintDto[];
 };
 
 export type UpdateChallengeDto = {
@@ -61,6 +67,7 @@ export type UpdateChallengeDto = {
   points?: number;
   order_number?: number;
   is_active?: boolean | number;
+  hints?: ChallengeHintDto[];
 };
 
 @Injectable()
@@ -507,6 +514,9 @@ export class LabsService {
 
     /*
      * Delete challenges belonging to the lab.
+     *
+     * challenge_hints are automatically deleted
+     * because of ON DELETE CASCADE.
      */
 
     await this.database.query(
@@ -545,7 +555,9 @@ export class LabsService {
   | STUDENT ENDPOINT
   |
   | IMPORTANT:
-  | flag is intentionally NOT returned.
+  | The flag is NEVER returned.
+  | Hints are also not returned here because
+  | this endpoint is only used for the challenge list.
   |
   */
 
@@ -593,7 +605,7 @@ export class LabsService {
   |
   | ADMIN ENDPOINT
   |
-  | Still does NOT expose flag.
+  | The flag is intentionally NOT returned here.
   |
   */
 
@@ -640,7 +652,12 @@ export class LabsService {
   |
   | STUDENT ENDPOINT
   |
-  | flag is intentionally NOT returned.
+  | Returns:
+  | - challenge information
+  | - hints
+  |
+  | NEVER returns:
+  | - flag
   |
   */
 
@@ -680,9 +697,28 @@ export class LabsService {
       );
     }
 
+    const hints =
+      await this.database.query<any[]>(
+        `
+        SELECT
+          id,
+          hint_text,
+          hint_order
+        FROM challenge_hints
+        WHERE challenge_id = ?
+        ORDER BY
+          hint_order ASC,
+          id ASC
+        `,
+        [challengeId],
+      );
+
     return {
       success: true,
-      challenge: challenges[0],
+      challenge: {
+        ...challenges[0],
+        hints,
+      },
     };
   }
 
@@ -700,11 +736,19 @@ export class LabsService {
   ) {
     await this.findOne(labId);
 
+    /*
+     * Validate title.
+     */
+
     if (!dto.title?.trim()) {
       throw new BadRequestException(
         'Challenge title is required.',
       );
     }
+
+    /*
+     * Validate task.
+     */
 
     if (!dto.task?.trim()) {
       throw new BadRequestException(
@@ -712,11 +756,19 @@ export class LabsService {
       );
     }
 
+    /*
+     * Validate flag.
+     */
+
     if (!dto.flag?.trim()) {
       throw new BadRequestException(
         'Challenge flag is required.',
       );
     }
+
+    /*
+     * Validate points.
+     */
 
     if (
       dto.points === undefined ||
@@ -727,13 +779,18 @@ export class LabsService {
       );
     }
 
-    let orderNumber =
-      dto.order_number;
+    /*
+     * Validate hints.
+     */
+
+    this.validateHints(dto.hints);
 
     /*
-     * Automatically assign the next
-     * challenge order if none is provided.
+     * Determine challenge order.
      */
+
+    let orderNumber =
+      dto.order_number;
 
     if (orderNumber === undefined) {
       const result =
@@ -755,6 +812,10 @@ export class LabsService {
           result[0]?.next_order,
         ) || 1;
     }
+
+    /*
+     * Create challenge.
+     */
 
     const result: any =
       await this.database.query(
@@ -790,6 +851,15 @@ export class LabsService {
     const challengeId =
       result.insertId;
 
+    /*
+     * Save hints.
+     */
+
+    await this.replaceChallengeHints(
+      challengeId,
+      dto.hints,
+    );
+
     return {
       success: true,
       message:
@@ -820,8 +890,18 @@ export class LabsService {
       challengeId,
     );
 
+    /*
+     * Validate hints when supplied.
+     */
+
+    this.validateHints(dto.hints);
+
     const fields: string[] = [];
     const values: any[] = [];
+
+    /*
+     * Title.
+     */
 
     if (dto.title !== undefined) {
       if (!dto.title.trim()) {
@@ -834,12 +914,21 @@ export class LabsService {
       values.push(dto.title.trim());
     }
 
+    /*
+     * Description.
+     */
+
     if (dto.description !== undefined) {
       fields.push('description = ?');
+
       values.push(
         dto.description?.trim() || null,
       );
     }
+
+    /*
+     * Task.
+     */
 
     if (dto.task !== undefined) {
       if (!dto.task.trim()) {
@@ -853,7 +942,7 @@ export class LabsService {
     }
 
     /*
-     * Update challenge flag.
+     * Flag.
      */
 
     if (dto.flag !== undefined) {
@@ -867,6 +956,10 @@ export class LabsService {
       values.push(dto.flag.trim());
     }
 
+    /*
+     * Points.
+     */
+
     if (dto.points !== undefined) {
       if (dto.points < 0) {
         throw new BadRequestException(
@@ -878,6 +971,10 @@ export class LabsService {
       values.push(dto.points);
     }
 
+    /*
+     * Order number.
+     */
+
     if (
       dto.order_number !== undefined
     ) {
@@ -888,38 +985,72 @@ export class LabsService {
       }
 
       fields.push('order_number = ?');
+
       values.push(
         dto.order_number,
       );
     }
 
+    /*
+     * Active status.
+     */
+
     if (dto.is_active !== undefined) {
       fields.push('is_active = ?');
+
       values.push(
         dto.is_active ? 1 : 0,
       );
     }
 
-    if (fields.length === 0) {
+    /*
+     * Update challenge fields when supplied.
+     */
+
+    if (fields.length > 0) {
+      values.push(
+        challengeId,
+        labId,
+      );
+
+      await this.database.query(
+        `
+        UPDATE challenges
+        SET ${fields.join(', ')}
+        WHERE id = ?
+        AND lab_id = ?
+        `,
+        values,
+      );
+    }
+
+    /*
+     * Replace hints when hints were supplied.
+     *
+     * If hints is undefined, existing hints
+     * remain untouched.
+     *
+     * If hints is [], all existing hints are
+     * removed.
+     */
+
+    await this.replaceChallengeHints(
+      challengeId,
+      dto.hints,
+    );
+
+    /*
+     * Make sure at least something was changed.
+     */
+
+    if (
+      fields.length === 0 &&
+      dto.hints === undefined
+    ) {
       throw new BadRequestException(
         'No fields were provided for update.',
       );
     }
-
-    values.push(
-      challengeId,
-      labId,
-    );
-
-    await this.database.query(
-      `
-      UPDATE challenges
-      SET ${fields.join(', ')}
-      WHERE id = ?
-      AND lab_id = ?
-      `,
-      values,
-    );
 
     return {
       success: true,
@@ -1009,6 +1140,15 @@ export class LabsService {
       [challengeId],
     );
 
+    /*
+     * Delete challenge.
+     *
+     * challenge_hints are automatically deleted
+     * by the foreign key:
+     *
+     * ON DELETE CASCADE
+     */
+
     await this.database.query(
       `
       DELETE FROM challenges
@@ -1030,10 +1170,164 @@ export class LabsService {
 
   /*
   |--------------------------------------------------------------------------
+  | VALIDATE HINTS
+  |--------------------------------------------------------------------------
+  */
+
+  private validateHints(
+    hints?: ChallengeHintDto[],
+  ) {
+    if (hints === undefined) {
+      return;
+    }
+
+    if (!Array.isArray(hints)) {
+      throw new BadRequestException(
+        'Hints must be an array.',
+      );
+    }
+
+    for (
+      let index = 0;
+      index < hints.length;
+      index++
+    ) {
+      const hint = hints[index];
+
+      if (!hint) {
+        throw new BadRequestException(
+          `Hint ${index + 1} is invalid.`,
+        );
+      }
+
+      if (
+        !hint.hint_text?.trim()
+      ) {
+        throw new BadRequestException(
+          `Hint ${index + 1} cannot be empty.`,
+        );
+      }
+
+      if (
+        hint.hint_order !== undefined
+      ) {
+        const order =
+          Number(
+            hint.hint_order,
+          );
+
+        if (
+          !Number.isInteger(order) ||
+          order < 1
+        ) {
+          throw new BadRequestException(
+            `Hint ${index + 1} order must be a positive integer.`,
+          );
+        }
+      }
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | REPLACE CHALLENGE HINTS
+  |--------------------------------------------------------------------------
+  |
+  | Used by both create and update.
+  |
+  | undefined:
+  |   Keep existing hints unchanged.
+  |
+  | []:
+  |   Remove all existing hints.
+  |
+  | [ ... ]:
+  |   Replace existing hints with the supplied hints.
+  |
+  */
+
+  private async replaceChallengeHints(
+    challengeId: number,
+    hints?: ChallengeHintDto[],
+  ) {
+    if (hints === undefined) {
+      return;
+    }
+
+    /*
+     * Remove existing hints first.
+     */
+
+    await this.database.query(
+      `
+      DELETE FROM challenge_hints
+      WHERE challenge_id = ?
+      `,
+      [challengeId],
+    );
+
+    /*
+     * Nothing else to insert.
+     */
+
+    if (hints.length === 0) {
+      return;
+    }
+
+    /*
+     * Insert the new hints.
+     */
+
+    for (
+      let index = 0;
+      index < hints.length;
+      index++
+    ) {
+      const hint = hints[index];
+
+      if (
+        !hint?.hint_text?.trim()
+      ) {
+        continue;
+      }
+
+      const hintOrder =
+        hint.hint_order !== undefined
+          ? Number(
+              hint.hint_order,
+            )
+          : index + 1;
+
+      await this.database.query(
+        `
+        INSERT INTO challenge_hints (
+          challenge_id,
+          hint_text,
+          hint_order
+        )
+        VALUES (?, ?, ?)
+        `,
+        [
+          challengeId,
+          hint.hint_text.trim(),
+          hintOrder,
+        ],
+      );
+    }
+  }
+
+  /*
+  |--------------------------------------------------------------------------
   | INTERNAL HELPER
   |--------------------------------------------------------------------------
   |
-  | This intentionally does NOT return the flag.
+  | IMPORTANT:
+  | This intentionally does NOT return:
+  |
+  | - flag
+  | - hints
+  |
+  | It is mainly used after admin mutations.
   |
   */
 
