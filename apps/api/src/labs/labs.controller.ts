@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -11,25 +10,26 @@ import {
   Put,
 } from '@nestjs/common';
 
-import { LabsService } from './labs.service';
+import * as labsService_1 from './labs.service';
 
 import { CreateLabDto } from './dto/create-lab.dto';
 import { UpdateLabDto } from './dto/update-lab.dto';
 
-import { CreateChallengeDto } from './dto/create-challenge.dto';
-import { UpdateChallengeDto } from './dto/update-challenge.dto';
-
 @Controller('labs')
 export class LabsController {
   constructor(
-    private readonly labsService: LabsService,
+    private readonly labsService: labsService_1.LabsService,
   ) {}
 
   // =========================================================
   // LABS
   // =========================================================
 
-  // POST /labs
+  /*
+   * POST /labs
+   *
+   * Create a new lab.
+   */
   @Post()
   async create(
     @Body() dto: CreateLabDto,
@@ -37,19 +37,31 @@ export class LabsController {
     return this.labsService.create(dto);
   }
 
-  // GET /labs
+  /*
+   * GET /labs
+   *
+   * Get all labs.
+   */
   @Get()
   async findAll() {
     return this.labsService.findAll();
   }
 
-  // GET /labs/active
+  /*
+   * GET /labs/active
+   *
+   * Get only active labs.
+   */
   @Get('active')
   async findActiveLabs() {
     return this.labsService.findActiveLabs();
   }
 
-  // GET /labs/slug/:slug
+  /*
+   * GET /labs/slug/:slug
+   *
+   * Get a lab by slug.
+   */
   @Get('slug/:slug')
   async findBySlug(
     @Param('slug') slug: string,
@@ -57,7 +69,15 @@ export class LabsController {
     return this.labsService.findBySlug(slug);
   }
 
-  // GET /labs/:id
+  /*
+   * GET /labs/:id
+   *
+   * Get one lab.
+   *
+   * IMPORTANT:
+   * This route is placed after the more specific
+   * /active and /slug/:slug routes.
+   */
   @Get(':id')
   async findOne(
     @Param('id', ParseIntPipe) id: number,
@@ -65,7 +85,11 @@ export class LabsController {
     return this.labsService.findOne(id);
   }
 
-  // PUT /labs/:id
+  /*
+   * PUT /labs/:id
+   *
+   * Update a lab.
+   */
   @Put(':id')
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -77,7 +101,11 @@ export class LabsController {
     );
   }
 
-  // PATCH /labs/:id/status
+  /*
+   * PATCH /labs/:id/status
+   *
+   * Activate/deactivate a lab.
+   */
   @Patch(':id/status')
   async updateStatus(
     @Param('id', ParseIntPipe) id: number,
@@ -92,7 +120,11 @@ export class LabsController {
     );
   }
 
-  // DELETE /labs/:id
+  /*
+   * DELETE /labs/:id
+   *
+   * Delete a lab and its challenges/submissions.
+   */
   @Delete(':id')
   async remove(
     @Param('id', ParseIntPipe) id: number,
@@ -104,7 +136,14 @@ export class LabsController {
   // CHALLENGES
   // =========================================================
 
-  // GET /labs/:labId/challenges
+  /*
+   * GET /labs/:labId/challenges
+   *
+   * STUDENT ENDPOINT
+   *
+   * Returns active challenges.
+   * The flag is NOT returned.
+   */
   @Get(':labId/challenges')
   async findChallenges(
     @Param('labId', ParseIntPipe)
@@ -115,7 +154,14 @@ export class LabsController {
     );
   }
 
-  // GET /labs/:labId/challenges/all
+  /*
+   * GET /labs/:labId/challenges/all
+   *
+   * ADMIN ENDPOINT
+   *
+   * Returns active + inactive challenges.
+   * The flag is NOT returned here either.
+   */
   @Get(':labId/challenges/all')
   async findAllChallenges(
     @Param('labId', ParseIntPipe)
@@ -126,7 +172,13 @@ export class LabsController {
     );
   }
 
-  // GET /labs/:labId/challenges/:challengeId
+  /*
+   * GET /labs/:labId/challenges/:challengeId
+   *
+   * Get one challenge.
+   *
+   * The flag is intentionally NOT returned.
+   */
   @Get(':labId/challenges/:challengeId')
   async findChallenge(
     @Param('labId', ParseIntPipe)
@@ -141,13 +193,29 @@ export class LabsController {
     );
   }
 
-  // POST /labs/:labId/challenges
+  /*
+   * POST /labs/:labId/challenges
+   *
+   * Create a challenge.
+   *
+   * Body now supports:
+   *
+   * {
+   *   "title": "...",
+   *   "description": "...",
+   *   "task": "...",
+   *   "flag": "CYBERLAB{...}",
+   *   "points": 100,
+   *   "order_number": 1,
+   *   "is_active": true
+   * }
+   */
   @Post(':labId/challenges')
   async createChallenge(
     @Param('labId', ParseIntPipe)
     labId: number,
 
-    @Body() dto: CreateChallengeDto,
+    @Body() dto: labsService_1.CreateChallengeDto,
   ) {
     return this.labsService.createChallenge(
       labId,
@@ -155,7 +223,13 @@ export class LabsController {
     );
   }
 
-  // PUT /labs/:labId/challenges/:challengeId
+  /*
+   * PUT /labs/:labId/challenges/:challengeId
+   *
+   * Update a challenge.
+   *
+   * The flag can also be updated.
+   */
   @Put(':labId/challenges/:challengeId')
   async updateChallenge(
     @Param('labId', ParseIntPipe)
@@ -164,7 +238,7 @@ export class LabsController {
     @Param('challengeId', ParseIntPipe)
     challengeId: number,
 
-    @Body() dto: UpdateChallengeDto,
+    @Body() dto: labsService_1.UpdateChallengeDto,
   ) {
     return this.labsService.updateChallenge(
       labId,
@@ -173,7 +247,11 @@ export class LabsController {
     );
   }
 
-  // PATCH /labs/:labId/challenges/:challengeId/status
+  /*
+   * PATCH /labs/:labId/challenges/:challengeId/status
+   *
+   * Activate/deactivate a challenge.
+   */
   @Patch(':labId/challenges/:challengeId/status')
   async updateChallengeStatus(
     @Param('labId', ParseIntPipe)
@@ -194,7 +272,11 @@ export class LabsController {
     );
   }
 
-  // DELETE /labs/:labId/challenges/:challengeId
+  /*
+   * DELETE /labs/:labId/challenges/:challengeId
+   *
+   * Delete a challenge and its submissions.
+   */
   @Delete(':labId/challenges/:challengeId')
   async removeChallenge(
     @Param('labId', ParseIntPipe)

@@ -1,4 +1,3 @@
-
 import {
   BadRequestException,
   Injectable,
@@ -42,29 +41,13 @@ export type UpdateLabDto = {
 |--------------------------------------------------------------------------
 | CHALLENGE DTOs
 |--------------------------------------------------------------------------
-|
-| IMPORTANT:
-| Your challenges table does NOT have slug.
-|
-| Your actual columns are:
-|
-| id
-| lab_id
-| title
-| description
-| task
-| points
-| order_number
-| is_active
-| created_at
-|
-|--------------------------------------------------------------------------
 */
 
 export type CreateChallengeDto = {
   title: string;
   description?: string;
   task: string;
+  flag: string;
   points: number;
   order_number?: number;
   is_active?: boolean | number;
@@ -74,6 +57,7 @@ export type UpdateChallengeDto = {
   title?: string;
   description?: string;
   task?: string;
+  flag?: string;
   points?: number;
   order_number?: number;
   is_active?: boolean | number;
@@ -505,8 +489,24 @@ export class LabsService {
     await this.findOne(id);
 
     /*
-     * Delete challenges first because
-     * challenges.lab_id references labs.id.
+     * Delete submissions belonging to
+     * challenges in this lab first.
+     */
+
+    await this.database.query(
+      `
+      DELETE FROM submissions
+      WHERE challenge_id IN (
+        SELECT id
+        FROM challenges
+        WHERE lab_id = ?
+      )
+      `,
+      [id],
+    );
+
+    /*
+     * Delete challenges belonging to the lab.
      */
 
     await this.database.query(
@@ -516,6 +516,10 @@ export class LabsService {
       `,
       [id],
     );
+
+    /*
+     * Delete the lab.
+     */
 
     await this.database.query(
       `
@@ -538,7 +542,10 @@ export class LabsService {
   | GET /labs/:labId/challenges
   |--------------------------------------------------------------------------
   |
-  | This is the endpoint your frontend should use.
+  | STUDENT ENDPOINT
+  |
+  | IMPORTANT:
+  | flag is intentionally NOT returned.
   |
   */
 
@@ -584,8 +591,9 @@ export class LabsService {
   | GET /labs/:labId/challenges/all
   |--------------------------------------------------------------------------
   |
-  | Admin endpoint.
-  | Includes inactive challenges.
+  | ADMIN ENDPOINT
+  |
+  | Still does NOT expose flag.
   |
   */
 
@@ -629,6 +637,11 @@ export class LabsService {
   |--------------------------------------------------------------------------
   | GET /labs/:labId/challenges/:challengeId
   |--------------------------------------------------------------------------
+  |
+  | STUDENT ENDPOINT
+  |
+  | flag is intentionally NOT returned.
+  |
   */
 
   async findChallenge(
@@ -699,6 +712,12 @@ export class LabsService {
       );
     }
 
+    if (!dto.flag?.trim()) {
+      throw new BadRequestException(
+        'Challenge flag is required.',
+      );
+    }
+
     if (
       dto.points === undefined ||
       dto.points < 0
@@ -745,17 +764,19 @@ export class LabsService {
           title,
           description,
           task,
+          flag,
           points,
           order_number,
           is_active
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           labId,
           dto.title.trim(),
           dto.description?.trim() || null,
           dto.task.trim(),
+          dto.flag.trim(),
           dto.points,
           orderNumber,
           dto.is_active === undefined
@@ -829,6 +850,21 @@ export class LabsService {
 
       fields.push('task = ?');
       values.push(dto.task.trim());
+    }
+
+    /*
+     * Update challenge flag.
+     */
+
+    if (dto.flag !== undefined) {
+      if (!dto.flag.trim()) {
+        throw new BadRequestException(
+          'Challenge flag cannot be empty.',
+        );
+      }
+
+      fields.push('flag = ?');
+      values.push(dto.flag.trim());
     }
 
     if (dto.points !== undefined) {
@@ -959,6 +995,20 @@ export class LabsService {
       challengeId,
     );
 
+    /*
+     * Delete submissions first because
+     * submissions.challenge_id references
+     * challenges.id.
+     */
+
+    await this.database.query(
+      `
+      DELETE FROM submissions
+      WHERE challenge_id = ?
+      `,
+      [challengeId],
+    );
+
     await this.database.query(
       `
       DELETE FROM challenges
@@ -982,6 +1032,9 @@ export class LabsService {
   |--------------------------------------------------------------------------
   | INTERNAL HELPER
   |--------------------------------------------------------------------------
+  |
+  | This intentionally does NOT return the flag.
+  |
   */
 
   private async getChallengeById(
