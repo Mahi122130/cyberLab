@@ -20,6 +20,12 @@ type Lab = {
   created_at: string;
 };
 
+type ChallengeHint = {
+  id: number;
+  hint_text: string;
+  hint_order: number;
+};
+
 type Challenge = {
   id: number;
   lab_id: number;
@@ -30,6 +36,7 @@ type Challenge = {
   order_number: number;
   is_active: number | boolean;
   created_at: string;
+  hints?: ChallengeHint[];
 };
 
 type ChallengesResponse = {
@@ -67,6 +74,13 @@ export default function ChallengePage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [revealedHints, setRevealedHints] = useState(0);
+  const [flag, setFlag] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submissionCorrect, setSubmissionCorrect] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
 
   // ================================================================
   // LOAD LAB + CHALLENGE
@@ -227,6 +241,14 @@ export default function ChallengePage() {
 
         setLab(labData);
         setChallenge(foundChallenge);
+
+        // Reset challenge-specific UI when navigating between challenges.
+        setRevealedHints(0);
+        setFlag("");
+        setSubmitting(false);
+        setSubmissionMessage("");
+        setSubmissionCorrect(false);
+        setEarnedPoints(null);
       } catch (err) {
         console.error(
           "Failed to load challenge:",
@@ -253,6 +275,140 @@ export default function ChallengePage() {
       cancelled = true;
     };
   }, [labId, challengeId, API_URL]);
+
+  // ================================================================
+  // HINTS
+  // ================================================================
+
+  const revealNextHint = () => {
+    const hintCount = challenge?.hints?.length ?? 0;
+
+    if (hintCount === 0) {
+      return;
+    }
+
+    setRevealedHints((current) =>
+      Math.min(current + 1, hintCount)
+    );
+  };
+
+  // ================================================================
+  // SUBMIT FLAG
+  // ================================================================
+
+  const submitFlag = async () => {
+    if (
+      !challenge ||
+      !flag.trim() ||
+      submitting ||
+      submissionCorrect
+    ) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setSubmissionMessage("");
+
+      const storedUser =
+        localStorage.getItem("cyberlab_user");
+
+      if (!storedUser) {
+        setSubmissionMessage(
+          "You must be logged in to submit a flag."
+        );
+        return;
+      }
+
+      let user: { id?: number | string };
+
+      try {
+        user = JSON.parse(storedUser);
+      } catch {
+        setSubmissionMessage(
+          "Your login session is invalid. Please log in again."
+        );
+        return;
+      }
+
+      const userId = Number(user.id);
+
+      if (!user.id || Number.isNaN(userId) || userId <= 0) {
+        setSubmissionMessage(
+          "Unable to identify your account. Please log in again."
+        );
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/submissions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            challengeId: challenge.id,
+            flag: flag.trim(),
+          }),
+        }
+      );
+
+      const data = await response
+        .json()
+        .catch(() => null);
+
+      if (!response.ok) {
+        const message = Array.isArray(data?.message)
+          ? data.message.join(", ")
+          : data?.message;
+
+        throw new Error(
+          message ||
+            `Submission failed (${response.status})`
+        );
+      }
+
+      const correct =
+        data?.correct === true ||
+        data?.success === true;
+
+      if (correct) {
+        setSubmissionCorrect(true);
+        setEarnedPoints(
+          Number(data?.points ?? challenge.points)
+        );
+        setSubmissionMessage(
+          data?.message ||
+            "Correct flag! Challenge completed."
+        );
+      } else {
+        setSubmissionCorrect(false);
+        setEarnedPoints(null);
+        setSubmissionMessage(
+          data?.message ||
+            "Incorrect flag. Try again."
+        );
+      }
+    } catch (err) {
+      console.error(
+        "Flag submission failed:",
+        err
+      );
+
+      setSubmissionCorrect(false);
+      setEarnedPoints(null);
+      setSubmissionMessage(
+        err instanceof Error
+          ? err.message
+          : "Unable to submit the flag."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // ================================================================
   // LOADING
@@ -451,28 +607,61 @@ export default function ChallengePage() {
             TARGET
           </div>
 
-          <h2 className="mt-2 text-xl font-semibold">
-            Challenge environment
-          </h2>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <h2 className="mt-2 text-xl font-semibold">
+                Challenge environment
+              </h2>
+
+              <p className="mt-2 text-xs leading-6 text-gray-600">
+                This target runs separately in an isolated Docker
+                environment, while your CyberLab challenge stays open.
+              </p>
+            </div>
+
+            {lab.target_url && (
+              <span className="shrink-0 rounded-lg border border-emerald-400/20 px-3 py-2 font-mono text-[9px] text-emerald-400">
+                DOCKER TARGET
+              </span>
+            )}
+          </div>
 
           {lab.target_url ? (
             <div className="mt-6">
-              <div className="font-mono text-[9px] text-gray-600">
-                TARGET URL
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="font-mono text-[9px] text-gray-600">
+                  RUNNING AT
+                </div>
+
+                <div className="break-all font-mono text-[10px] text-emerald-400">
+                  {lab.target_url}
+                </div>
               </div>
 
-              <a
-                href={lab.target_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 block break-all rounded-lg border border-white/[0.07] bg-black/20 p-4 font-mono text-sm text-emerald-400 transition hover:border-emerald-400/30"
-              >
-                {lab.target_url}
-              </a>
+              <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black">
+                <div className="flex h-10 items-center gap-2 border-b border-white/[0.07] bg-[#070b12] px-4">
+                  <span className="h-2 w-2 rounded-full bg-red-400/70" />
+                  <span className="h-2 w-2 rounded-full bg-yellow-400/70" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400/70" />
 
-              <p className="mt-3 text-xs text-gray-600">
-                Opens the challenge target in a
-                new tab.
+                  <span className="ml-3 truncate font-mono text-[9px] text-gray-600">
+                    {lab.target_url}
+                  </span>
+                </div>
+
+                <div className="h-[650px] bg-white">
+                  <iframe
+                    src={lab.target_url}
+                    title={`${challenge.title} target environment`}
+                    className="h-full w-full border-0"
+                    allow="clipboard-read; clipboard-write"
+                  />
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs leading-6 text-gray-600">
+                Work with the target above. You do not need to leave
+                CyberLab to complete the challenge.
               </p>
             </div>
           ) : (
@@ -485,6 +674,179 @@ export default function ChallengePage() {
                 The administrator has not configured
                 a target URL for this lab yet.
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* HINTS */}
+
+        <div className="mt-6 rounded-2xl border border-white/[0.07] bg-[#0a1019] p-6 sm:p-8">
+          <div className="font-mono text-[9px] tracking-[0.2em] text-gray-600">
+            HINTS
+          </div>
+
+          <h2 className="mt-2 text-xl font-semibold">
+            Need a little help?
+          </h2>
+
+          {challenge.hints &&
+          challenge.hints.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {challenge.hints.map(
+                (hint, index) => {
+                  const isRevealed =
+                    index < revealedHints;
+                  const isNext =
+                    index === revealedHints;
+
+                  return (
+                    <div
+                      key={hint.id}
+                      className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="font-mono text-[10px] text-gray-500">
+                          HINT{" "}
+                          {String(index + 1).padStart(
+                            2,
+                            "0"
+                          )}
+                        </span>
+
+                        {!isRevealed &&
+                          isNext && (
+                            <button
+                              type="button"
+                              onClick={
+                                revealNextHint
+                              }
+                              className="rounded-lg border border-yellow-400/20 px-3 py-2 font-mono text-[10px] text-yellow-400 transition hover:bg-yellow-400/10"
+                            >
+                              REVEAL HINT
+                            </button>
+                          )}
+                      </div>
+
+                      {isRevealed ? (
+                        <p className="mt-3 text-sm leading-7 text-gray-400">
+                          {hint.hint_text}
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-xs text-gray-700">
+                          Hint locked.
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+              )}
+
+              {revealedHints <
+                challenge.hints.length && (
+                <p className="pt-1 font-mono text-[9px] text-gray-700">
+                  {challenge.hints.length -
+                    revealedHints}{" "}
+                  hint
+                  {challenge.hints.length -
+                    revealedHints ===
+                  1
+                    ? ""
+                    : "s"}{" "}
+                  remaining
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-gray-600">
+              No hints have been added for this
+              challenge.
+            </p>
+          )}
+        </div>
+
+        {/* SUBMIT FLAG */}
+
+        <div className="mt-6 rounded-2xl border border-emerald-400/15 bg-[#0a1019] p-6 sm:p-8">
+          <div className="font-mono text-[9px] tracking-[0.2em] text-gray-600">
+            SUBMISSION
+          </div>
+
+          <h2 className="mt-2 text-xl font-semibold">
+            Submit your flag
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-gray-600">
+            Enter the flag you discovered in the
+            authorized challenge environment.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={flag}
+              onChange={(event) => {
+                setFlag(event.target.value);
+
+                if (!submissionCorrect) {
+                  setSubmissionMessage("");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  submitFlag();
+                }
+              }}
+              disabled={
+                submitting || submissionCorrect
+              }
+              placeholder="CYBERLAB{...}"
+              autoComplete="off"
+              spellCheck={false}
+              className="h-12 min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-black/20 px-4 font-mono text-sm text-white outline-none placeholder:text-gray-700 focus:border-emerald-400/40 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+
+            <button
+              type="button"
+              onClick={submitFlag}
+              disabled={
+                !flag.trim() ||
+                submitting ||
+                submissionCorrect
+              }
+              className="h-12 rounded-lg bg-emerald-400 px-6 font-mono text-xs font-semibold text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {submitting
+                ? "CHECKING..."
+                : submissionCorrect
+                  ? "COMPLETED ✓"
+                  : "SUBMIT FLAG"}
+            </button>
+          </div>
+
+          {submissionMessage && (
+            <div
+              className={`mt-4 rounded-lg border p-4 ${
+                submissionCorrect
+                  ? "border-emerald-400/20 bg-emerald-400/[0.05]"
+                  : "border-red-400/20 bg-red-400/[0.05]"
+              }`}
+            >
+              <div
+                className={`font-mono text-xs ${
+                  submissionCorrect
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }`}
+              >
+                {submissionMessage}
+              </div>
+
+              {submissionCorrect &&
+                earnedPoints !== null && (
+                  <div className="mt-2 font-mono text-xs font-semibold text-emerald-400">
+                    +{earnedPoints} XP EARNED
+                  </div>
+                )}
             </div>
           )}
         </div>
@@ -555,14 +917,9 @@ export default function ChallengePage() {
           </Link>
 
           {lab.target_url && (
-            <a
-              href={lab.target_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 items-center rounded-lg bg-emerald-400 px-6 font-mono text-xs font-semibold text-black transition hover:bg-emerald-300"
-            >
-              OPEN TARGET →
-            </a>
+            <span className="inline-flex h-11 items-center rounded-lg border border-emerald-400/20 px-6 font-mono text-xs text-emerald-400">
+              TARGET RUNNING ABOVE
+            </span>
           )}
         </div>
       </section>
