@@ -15,15 +15,25 @@ type User = {
   created_at?: string;
 };
 
+type UserStats = {
+  totalPoints: number;
+  challengesSolved: number;
+  labsCompleted: number;
+  globalRank: number;
+  totalStudents: number;
+  level: number;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("cyberlab_user");
+    const storedUser = localStorage.getItem("cyberlab_user");
+    const token = localStorage.getItem("cyberlab_token");
 
     if (!storedUser) {
       router.replace("/login");
@@ -31,21 +41,27 @@ export default function ProfilePage() {
     }
 
     try {
-      const parsedUser = JSON.parse(
-        storedUser,
-      ) as User;
-
+      const parsedUser = JSON.parse(storedUser) as User;
       setUser(parsedUser);
+
+      if (token) {
+        fetch("http://localhost:5001/api/v1/users/me/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.data?.stats) {
+              setStats(data.data.stats);
+            }
+            if (data?.data?.user) {
+              setUser((prev) => ({ ...prev, ...data.data.user }));
+            }
+          })
+          .catch((err) => console.error("Failed to load user stats:", err));
+      }
     } catch (error) {
-      console.error(
-        "Failed to load profile:",
-        error,
-      );
-
-      localStorage.removeItem(
-        "cyberlab_user",
-      );
-
+      console.error("Failed to load profile:", error);
+      localStorage.removeItem("cyberlab_user");
       router.replace("/login");
     } finally {
       setLoading(false);
@@ -200,19 +216,19 @@ export default function ProfilePage() {
 
           <ProfileStat
             label="EXPERIENCE"
-            value={`${user.points} XP`}
+            value={`${stats?.totalPoints ?? user.points} XP`}
             icon="★"
           />
 
           <ProfileStat
             label="LABS COMPLETED"
-            value="0"
+            value={stats ? String(stats.labsCompleted) : "0"}
             icon="✓"
           />
 
           <ProfileStat
             label="RANK"
-            value="#—"
+            value={stats?.globalRank ? `#${stats.globalRank}` : "#—"}
             icon="♛"
           />
         </div>

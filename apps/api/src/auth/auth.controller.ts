@@ -17,26 +17,27 @@ export class AuthController {
   async login(
     @Body()
     body: {
-      email: string;
+      email?: string;
+      username?: string;
+      usernameOrEmail?: string;
       password: string;
     },
   ) {
-    if (!body.email || !body.password) {
-      throw new BadRequestException(
-        'Email and password are required',
-      );
-    }
+    const identifier = (
+      body.usernameOrEmail ||
+      body.email ||
+      body.username ||
+      ''
+    ).trim();
 
-    const email = body.email.trim().toLowerCase();
-
-    if (!email.includes('@')) {
+    if (!identifier || !body.password) {
       throw new BadRequestException(
-        'Please provide a valid email address',
+        'Email/username and password are required',
       );
     }
 
     return this.authService.login(
-      email,
+      identifier,
       body.password,
     );
   }

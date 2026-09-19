@@ -1,3 +1,10 @@
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Pre-load environment variables before Nest bootstrap
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 

@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  idor_advanced:
+    build:
+      context: ./src
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - FLAG=CYBERLAB{idor_advanced_admin_access_xyz}

@@ -15,10 +15,10 @@ export class AuthService {
   ) {}
 
   async login(
-    email: string,
+    identifier: string,
     password: string,
   ) {
-    // Find user by email
+    // Find user by email or username
     const users = await this.databaseService.query(
       `
       SELECT
@@ -30,15 +30,15 @@ export class AuthService {
         points,
         level
       FROM users
-      WHERE email = ?
+      WHERE email = ? OR username = ?
       LIMIT 1
       `,
-      [email],
+      [identifier, identifier],
     );
 
     if (users.length === 0) {
       throw new UnauthorizedException(
-        'Invalid email or password',
+        'Invalid email/username or password',
       );
     }
 

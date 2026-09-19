@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  idor_01:
+    build:
+      context: .
+    ports:
+      - "8081:3000"
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - FLAG=CYBERLAB{idor_01_flag_placeholder}

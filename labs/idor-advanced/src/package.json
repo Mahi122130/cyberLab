@@ -1,0 +1,13 @@
+{
+  "name": "idor-advanced",
+  "version": "1.0.0",
+  "description": "IDOR Vulnerability Lab",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cookie-parser": "^1.4.6"
+  }
+}

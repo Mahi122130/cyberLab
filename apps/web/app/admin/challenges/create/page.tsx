@@ -26,6 +26,7 @@ type ChallengeForm = {
   points: string;
   order_number: string;
   is_active: boolean;
+  hints: { hint_text: string; hint_order: number }[];
 };
 
 export default function CreateChallengePage() {
@@ -48,7 +49,30 @@ export default function CreateChallengePage() {
       points: "100",
       order_number: "1",
       is_active: true,
+      hints: [],
     });
+
+  function addHint() {
+    setForm((prev) => ({
+      ...prev,
+      hints: [...prev.hints, { hint_text: "", hint_order: prev.hints.length + 1 }],
+    }));
+  }
+
+  function updateHint(index: number, text: string) {
+    setForm((prev) => {
+      const newHints = [...prev.hints];
+      newHints[index].hint_text = text;
+      return { ...prev, hints: newHints };
+    });
+  }
+
+  function removeHint(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      hints: prev.hints.filter((_, i) => i !== index),
+    }));
+  }
 
   /*
   |--------------------------------------------------------------------------
@@ -247,6 +271,8 @@ export default function CreateChallengePage() {
 
             is_active:
               form.is_active,
+
+            hints: form.hints.filter(h => h.hint_text.trim() !== ""),
           }),
         },
       );
@@ -293,6 +319,7 @@ export default function CreateChallengePage() {
         points: "100",
         order_number: "1",
         is_active: true,
+        hints: [],
       });
 
       /*
@@ -671,6 +698,64 @@ export default function CreateChallengePage() {
                 }`}
               />
             </button>
+          </div>
+
+          {/* ======================================================= */}
+          {/* HINTS */}
+          {/* ======================================================= */}
+
+          <div className="rounded-lg border border-white/10 bg-[#080d15] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-white">
+                  Hints
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Provide clues to help students solve this challenge.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addHint}
+                disabled={submitting}
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              >
+                + Add Hint
+              </button>
+            </div>
+
+            {form.hints.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-sm text-gray-500">
+                No hints added yet. Click "Add Hint" to create one.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {form.hints.map((hint, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#0d131d] font-mono text-sm text-gray-400">
+                      #{index + 1}
+                    </div>
+                    <textarea
+                      value={hint.hint_text}
+                      onChange={(e) => updateHint(index, e.target.value)}
+                      placeholder="Enter hint text here..."
+                      rows={2}
+                      disabled={submitting}
+                      className="w-full resize-none rounded-lg border border-white/10 bg-[#0d131d] px-4 py-3 text-white placeholder-gray-500 outline-none transition focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeHint(index)}
+                      disabled={submitting}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 transition hover:bg-red-500/20"
+                      title="Remove Hint"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* ======================================================= */}

@@ -10,6 +10,8 @@ import {
   type Language,
 } from "../../lib/i18n/i18n";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1";
+
 type User = {
   id: number;
   username: string;
@@ -99,6 +101,11 @@ export default function DashboardPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<{
+    challengesSolved: number;
+    labsCompleted: number;
+    globalRank: number;
+  } | null>(null);
 
   // LANGUAGE
   const [language, setLanguage] = useState<Language>("en");
@@ -122,6 +129,9 @@ export default function DashboardPage() {
     const storedUser =
       localStorage.getItem("cyberlab_user");
 
+    const token =
+      localStorage.getItem("cyberlab_token");
+
     if (!storedUser) {
       router.replace("/login");
       return;
@@ -130,6 +140,22 @@ export default function DashboardPage() {
     try {
       const parsedUser: User = JSON.parse(storedUser);
       setUser(parsedUser);
+
+      // Fetch real KPIs from API
+      if (token) {
+        fetch(`${API_URL}/users/me/stats`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.data?.stats) {
+              setStats(data.data.stats);
+            }
+          })
+          .catch(() => {
+            // Stats failed silently — fallback to user.points from localStorage
+          });
+      }
     } catch (error) {
       console.error("Invalid stored user:", error);
 
@@ -469,14 +495,14 @@ export default function DashboardPage() {
 
             <StatCard
               label={t.labsCompleted}
-              value="0"
+              value={stats ? String(stats.labsCompleted) : "—"}
               icon="✓"
               description={t.startFirstLab}
             />
 
             <StatCard
               label={t.globalRank}
-              value="#—"
+              value={stats ? `#${stats.globalRank}` : "#—"}
               icon="♛"
               description={t.completeLabsRank}
             />
