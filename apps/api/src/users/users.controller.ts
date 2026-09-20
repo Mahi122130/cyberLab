@@ -12,6 +12,8 @@ import {
 
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -58,18 +60,22 @@ export class UsersController {
   }
 
   // ==========================================
-  // GET ALL USERS
-  // GET /users
+  // GET ALL USERS (ADMIN ONLY)
+  // GET /api/v1/users
   // ==========================================
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get()
   async findAll() {
     return this.usersService.findAll();
   }
 
   // ==========================================
-  // GET USER BY ID
-  // GET /users/:id
+  // GET USER BY ID (ADMIN ONLY)
+  // GET /api/v1/users/:id
   // ==========================================
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get(':id')
   async findById(
     @Param('id', ParseIntPipe) id: number,
@@ -79,7 +85,7 @@ export class UsersController {
 
   // ==========================================
   // REGISTER
-  // POST /users
+  // POST /api/v1/users
   // ==========================================
   @Post()
   async create(
@@ -99,12 +105,7 @@ export class UsersController {
 
   // ==========================================
   // LOGIN
-  // POST /users/login
-  //
-  // Login with:
-  // - username
-  // OR
-  // - email
+  // POST /api/v1/users/login
   // ==========================================
   @Post('login')
   async login(

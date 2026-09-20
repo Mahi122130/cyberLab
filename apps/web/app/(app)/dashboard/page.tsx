@@ -606,10 +606,8 @@ function SectionHeader({
 
 function LabCard({
   lab,
-  language,
 }: {
   lab: Lab;
-  language: Language;
 }) {
   const { t } = useI18n();
 

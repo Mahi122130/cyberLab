@@ -1367,4 +1367,184 @@ export class LabsService {
 
     return challenges[0];
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | HINTS MANAGEMENT
+  |--------------------------------------------------------------------------
+  */
+
+  async getAllHints() {
+    const hints = await this.database.query<any[]>(
+      `
+      SELECT 
+        h.id,
+        h.challenge_id,
+        h.hint_text,
+        h.hint_order,
+        h.created_at,
+        c.title AS challenge_title,
+        c.points AS challenge_points,
+        c.lab_id,
+        l.title AS lab_title,
+        l.category AS lab_category
+      FROM challenge_hints h
+      JOIN challenges c ON h.challenge_id = c.id
+      JOIN labs l ON c.lab_id = l.id
+      ORDER BY l.id ASC, c.order_number ASC, h.hint_order ASC, h.id ASC
+      `
+    );
+    return { success: true, hints };
+  }
+
+  async createHint(challengeId: number, hintText: string, hintOrder?: number) {
+    if (!hintText?.trim()) {
+      throw new BadRequestException('Hint text is required.');
+    }
+    const order = hintOrder !== undefined ? Number(hintOrder) : 1;
+    const result: any = await this.database.query(
+      `INSERT INTO challenge_hints (challenge_id, hint_text, hint_order) VALUES (?, ?, ?)`,
+      [challengeId, hintText.trim(), order]
+    );
+    return {
+      success: true,
+      hint: {
+        id: result.insertId,
+        challenge_id: challengeId,
+        hint_text: hintText.trim(),
+        hint_order: order,
+      },
+    };
+  }
+
+  async updateHint(hintId: number, hintText?: string, hintOrder?: number) {
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (hintText !== undefined) {
+      updates.push('hint_text = ?');
+      params.push(hintText.trim());
+    }
+    if (hintOrder !== undefined) {
+      updates.push('hint_order = ?');
+      params.push(Number(hintOrder));
+    }
+    if (updates.length > 0) {
+      params.push(hintId);
+      await this.database.query(
+        `UPDATE challenge_hints SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
+    }
+    return { success: true };
+  }
+
+  async deleteHint(hintId: number) {
+    await this.database.query('DELETE FROM challenge_hints WHERE id = ?', [hintId]);
+    return { success: true };
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | RESOURCES MANAGEMENT
+  |--------------------------------------------------------------------------
+  */
+
+  async getAllResources() {
+    const resources = await this.database.query<any[]>(
+      `
+      SELECT
+        r.id,
+        r.lab_id,
+        r.title,
+        r.url,
+        r.description,
+        r.resource_type,
+        r.created_at,
+        l.title AS lab_title,
+        l.category AS lab_category,
+        l.difficulty AS lab_difficulty
+      FROM lab_resources r
+      JOIN labs l ON r.lab_id = l.id
+      ORDER BY l.id ASC, r.created_at DESC
+      `
+    );
+    return { success: true, resources };
+  }
+
+  async getLabResources(labId: number) {
+    const resources = await this.database.query<any[]>(
+      `SELECT * FROM lab_resources WHERE lab_id = ? ORDER BY created_at DESC`,
+      [labId]
+    );
+    return { success: true, lab_id: labId, resources };
+  }
+
+  async createResource(dto: {
+    lab_id: number;
+    title: string;
+    url?: string;
+    description?: string;
+    resource_type?: string;
+  }) {
+    if (!dto.lab_id) throw new BadRequestException('Lab ID is required.');
+    if (!dto.title?.trim()) throw new BadRequestException('Resource title is required.');
+    const result: any = await this.database.query(
+      `INSERT INTO lab_resources (lab_id, title, url, description, resource_type) VALUES (?, ?, ?, ?, ?)`,
+      [
+        dto.lab_id,
+        dto.title.trim(),
+        dto.url?.trim() || null,
+        dto.description?.trim() || null,
+        dto.resource_type || 'DOCUMENTATION',
+      ]
+    );
+    return { success: true, id: result.insertId };
+  }
+
+  async updateResource(
+    id: number,
+    dto: {
+      title?: string;
+      url?: string;
+      description?: string;
+      resource_type?: string;
+      lab_id?: number;
+    }
+  ) {
+    const updates: string[] = [];
+    const params: any[] = [];
+    if (dto.title !== undefined) {
+      updates.push('title = ?');
+      params.push(dto.title.trim());
+    }
+    if (dto.url !== undefined) {
+      updates.push('url = ?');
+      params.push(dto.url.trim() || null);
+    }
+    if (dto.description !== undefined) {
+      updates.push('description = ?');
+      params.push(dto.description.trim() || null);
+    }
+    if (dto.resource_type !== undefined) {
+      updates.push('resource_type = ?');
+      params.push(dto.resource_type);
+    }
+    if (dto.lab_id !== undefined) {
+      updates.push('lab_id = ?');
+      params.push(dto.lab_id);
+    }
+    if (updates.length > 0) {
+      params.push(id);
+      await this.database.query(
+        `UPDATE lab_resources SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
+    }
+    return { success: true };
+  }
+
+  async deleteResource(id: number) {
+    await this.database.query('DELETE FROM lab_resources WHERE id = ?', [id]);
+    return { success: true };
+  }
 }

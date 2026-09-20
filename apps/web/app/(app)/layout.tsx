@@ -71,6 +71,11 @@ export default function AppLayout({
     return null;
   }
 
+  // Admin routes render their own layout — skip student shell
+  if (pathname.startsWith("/admin")) {
+    return <>{children}</>;
+  }
+
   return (
     <main className="min-h-screen bg-[#05080d] text-white">
       <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-[#05080d]/95 backdrop-blur-xl">

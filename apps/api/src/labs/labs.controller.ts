@@ -70,6 +70,112 @@ export class LabsController {
   }
 
   /*
+   * GET /labs/hints/all
+   *
+   * Get all hints across all labs and challenges.
+   */
+  @Get('hints/all')
+  async getAllHints() {
+    return this.labsService.getAllHints();
+  }
+
+  /*
+   * POST /labs/hints
+   *
+   * Create a hint for a challenge.
+   */
+  @Post('hints')
+  async createHint(
+    @Body() body: { challenge_id: number; hint_text: string; hint_order?: number },
+  ) {
+    return this.labsService.createHint(body.challenge_id, body.hint_text, body.hint_order);
+  }
+
+  /*
+   * PUT /labs/hints/:id
+   *
+   * Update a hint text or order.
+   */
+  @Put('hints/:id')
+  async updateHint(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { hint_text?: string; hint_order?: number },
+  ) {
+    return this.labsService.updateHint(id, body.hint_text, body.hint_order);
+  }
+
+  /*
+   * DELETE /labs/hints/:id
+   *
+   * Delete a hint.
+   */
+  @Delete('hints/:id')
+  async deleteHint(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.labsService.deleteHint(id);
+  }
+
+  /*
+   * GET /labs/resources/all
+   *
+   * Get all resources across all labs.
+   */
+  @Get('resources/all')
+  async getAllResources() {
+    return this.labsService.getAllResources();
+  }
+
+  /*
+   * GET /labs/:labId/resources
+   *
+   * Get resources for a specific lab.
+   */
+  @Get(':labId/resources')
+  async getLabResources(
+    @Param('labId', ParseIntPipe) labId: number,
+  ) {
+    return this.labsService.getLabResources(labId);
+  }
+
+  /*
+   * POST /labs/resources
+   *
+   * Create a learning resource for a lab.
+   */
+  @Post('resources')
+  async createResource(
+    @Body() body: { lab_id: number; title: string; url?: string; description?: string; resource_type?: string },
+  ) {
+    return this.labsService.createResource(body);
+  }
+
+  /*
+   * PUT /labs/resources/:id
+   *
+   * Update a learning resource.
+   */
+  @Put('resources/:id')
+  async updateResource(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { lab_id?: number; title?: string; url?: string; description?: string; resource_type?: string },
+  ) {
+    return this.labsService.updateResource(id, body);
+  }
+
+  /*
+   * DELETE /labs/resources/:id
+   *
+   * Delete a learning resource.
+   */
+  @Delete('resources/:id')
+  async deleteResource(
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.labsService.deleteResource(id);
+  }
+
+  /*
    * GET /labs/:id
    *
    * Get one lab.
