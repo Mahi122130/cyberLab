@@ -1,0 +1,12 @@
+{
+  "name": "cyberlab-forgotten-admin-easy",
+  "version": "1.0.0",
+  "description": "Lab 3 - the forgoten admin challenge target",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

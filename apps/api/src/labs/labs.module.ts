@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../database/database.module';
 
+import { ContainersService } from './containers.service';
 import { LabsController } from './labs.controller';
 import { LabsService } from './labs.service';
 
@@ -17,10 +18,12 @@ import { LabsService } from './labs.service';
 
   providers: [
     LabsService,
+    ContainersService,
   ],
 
   exports: [
     LabsService,
+    ContainersService,
   ],
 })
 export class LabsModule {}

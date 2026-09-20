@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  forgotten_admin_easy:
+    build: .
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+    environment:
+      - PORT=8083
+      - FLAG=CYBERLAB{source_comments_leak_secrets}

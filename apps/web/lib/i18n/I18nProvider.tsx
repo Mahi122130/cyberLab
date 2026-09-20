@@ -11,7 +11,7 @@ import {
 import {
   Language,
   translations,
-} from "./translations";
+} from "./i18n";
 
 type I18nContextType = {
   language: Language;

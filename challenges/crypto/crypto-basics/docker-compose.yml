@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  crypto_basics:
+    build: .
+    ports:
+      - "8087:8087"
+    restart: unless-stopped
+    environment:
+      - PORT=8087
+      - FLAG=CYBERLAB{crypto_multi_layer_decoding_solved}

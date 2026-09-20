@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  forgotten_admin:
+    build: .
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    environment:
+      - PORT=8082
+      - FLAG=CYBERLAB{forgotten_admin_portal_exposed}

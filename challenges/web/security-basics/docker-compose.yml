@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  security_basics:
+    build: .
+    ports:
+      - "8085:8085"
+    restart: unless-stopped
+    environment:
+      - PORT=8085
+      - FLAG=CYBERLAB{http_headers_and_cookies_mastered}

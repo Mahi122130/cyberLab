@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -28,6 +29,7 @@ type LoginResponse = {
 };
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const router = useRouter();
 
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
@@ -238,7 +240,7 @@ export default function LoginPage() {
 
       /*
       |--------------------------------------------------------------------------
-      | CLEAR PASSWORD
+      | CLEAR {t.password}
       |--------------------------------------------------------------------------
       */
 
@@ -335,7 +337,7 @@ export default function LoginPage() {
           </Link>
 
           <div className="hidden font-mono text-[10px] tracking-[0.2em] text-gray-600 sm:block">
-            SECURE LOGIN
+            {t.secureLogin}
           </div>
 
         </div>
@@ -356,7 +358,7 @@ export default function LoginPage() {
 
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
 
-              ACCESS // OPERATIVE LOGIN
+              {t.accessOperativeLogin}
 
             </div>
 
@@ -388,7 +390,7 @@ export default function LoginPage() {
 
                 <span className="h-px w-8 bg-white/10" />
 
-                Continue your training
+                {t.continueTraining}
 
               </div>
 
@@ -400,7 +402,7 @@ export default function LoginPage() {
 
                 <span className="h-px w-8 bg-white/10" />
 
-                Access security labs
+                {t.accessSecurityLabs}
 
               </div>
 
@@ -412,7 +414,7 @@ export default function LoginPage() {
 
                 <span className="h-px w-8 bg-white/10" />
 
-                Track your progress
+                {t.trackProgress}
 
               </div>
 
@@ -435,7 +437,7 @@ export default function LoginPage() {
                 <div className="mb-4 flex items-center justify-between">
 
                   <div className="font-mono text-[10px] tracking-[0.25em] text-emerald-400">
-                    AUTHENTICATE
+                    {t.loginAuthenticate}
                   </div>
 
                   <div className="flex items-center gap-2 font-mono text-[9px] text-gray-600">
@@ -474,7 +476,7 @@ export default function LoginPage() {
                     htmlFor="usernameOrEmail"
                     className="mb-2 block font-mono text-[10px] tracking-[0.16em] text-gray-500"
                   >
-                    USERNAME OR EMAIL
+                    {t.usernameOrEmail}
                   </label>
 
                   <input
@@ -496,7 +498,7 @@ export default function LoginPage() {
 
                 </div>
 
-                {/* PASSWORD */}
+                {/* {t.password} */}
 
                 <div>
 
@@ -504,7 +506,7 @@ export default function LoginPage() {
                     htmlFor="password"
                     className="mb-2 block font-mono text-[10px] tracking-[0.16em] text-gray-500"
                   >
-                    PASSWORD
+                    {t.password}
                   </label>
 
                   <div className="relative">
@@ -541,8 +543,8 @@ export default function LoginPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[9px] uppercase tracking-wider text-gray-600 hover:text-emerald-400 disabled:opacity-50"
                     >
                       {showPassword
-                        ? "Hide"
-                        : "Show"}
+                        ? t.hide
+                        : t.show}
                     </button>
 
                   </div>
@@ -585,8 +587,8 @@ export default function LoginPage() {
                   className="flex h-12 w-full items-center justify-center rounded-lg bg-emerald-400 font-mono text-xs font-semibold tracking-wide text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading
-                    ? "AUTHENTICATING..."
-                    : "ENTER CYBERLAB →"}
+                    ? t.authenticating
+                    : t.enterCyberlab}
                 </button>
 
               </form>
@@ -596,14 +598,14 @@ export default function LoginPage() {
               <div className="mt-7 border-t border-white/[0.07] pt-6 text-center">
 
                 <span className="text-sm text-gray-600">
-                  Don't have an account?
+                  {t.noAccount}
                 </span>{" "}
 
                 <Link
                   href="/register"
                   className="font-mono text-xs text-emerald-400 transition hover:text-emerald-300"
                 >
-                  CREATE ACCOUNT →
+                  {t.createAccount}
                 </Link>
 
               </div>
@@ -618,7 +620,7 @@ export default function LoginPage() {
                 ◆
               </span>
 
-              CYBERLAB // SECURE ACCESS NODE
+              {t.secureAccessNode}
 
               <span className="text-emerald-400">
                 ◆

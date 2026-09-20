@@ -1,0 +1,13 @@
+{
+  "name": "cyberlab-forgotten-admin",
+  "version": "1.0.0",
+  "description": "Lab 1 - The Forgotten Admin challenge target",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cookie-parser": "^1.4.6"
+  }
+}

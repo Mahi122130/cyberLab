@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  linux_basics:
+    build: .
+    ports:
+      - "8084:8084"
+    restart: unless-stopped
+    environment:
+      - PORT=8084
+      - FLAG=CYBERLAB{linux_hidden_file_2026}

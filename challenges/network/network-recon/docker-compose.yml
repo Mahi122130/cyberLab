@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  network_recon:
+    build: .
+    ports:
+      - "8086:8086"
+    restart: unless-stopped
+    environment:
+      - PORT=8086
+      - FLAG=CYBERLAB{network_service_banner_recon}
