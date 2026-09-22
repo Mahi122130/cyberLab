@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Lab = {
@@ -39,23 +38,14 @@ type Challenge = {
   hints?: ChallengeHint[];
 };
 
-type ChallengesResponse = {
-  success: boolean;
-  lab_id: number;
-  challenges: Challenge[];
-};
-
 export default function ChallengePage() {
   const params = useParams();
-  const router = useRouter();
 
   const rawLabId = params?.id;
   const rawChallengeId = params?.challengeId;
 
   const labId = Number(
-    Array.isArray(rawLabId)
-      ? rawLabId[0]
-      : rawLabId
+    Array.isArray(rawLabId) ? rawLabId[0] : rawLabId
   );
 
   const challengeId = Number(
@@ -78,9 +68,183 @@ export default function ChallengePage() {
   const [revealedHints, setRevealedHints] = useState(0);
   const [flag, setFlag] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submissionMessage, setSubmissionMessage] = useState("");
-  const [submissionCorrect, setSubmissionCorrect] = useState(false);
-  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
+  const [submissionMessage, setSubmissionMessage] =
+    useState("");
+  const [submissionCorrect, setSubmissionCorrect] =
+    useState(false);
+  const [earnedPoints, setEarnedPoints] =
+    useState<number | null>(null);
+
+  // ================================================================
+  // FIND AUTH TOKEN
+  // ================================================================
+
+  const getAuthToken = (): string | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const possibleKeys = [
+      "cyberlab_token",
+      "accessToken",
+      "access_token",
+      "token",
+      "jwt",
+      "authToken",
+      "auth_token",
+      "cyberlab_access_token",
+      "cyberlab_accessToken",
+    ];
+
+    // --------------------------------------------------------------
+    // 1. Check localStorage using common token names
+    // --------------------------------------------------------------
+
+    for (const key of possibleKeys) {
+      const value = localStorage.getItem(key);
+
+      if (value) {
+        const cleaned = value.trim();
+
+        if (cleaned) {
+          return cleaned.startsWith("Bearer ")
+            ? cleaned.substring(7).trim()
+            : cleaned;
+        }
+      }
+    }
+
+    // --------------------------------------------------------------
+    // 2. Check sessionStorage using common token names
+    // --------------------------------------------------------------
+
+    for (const key of possibleKeys) {
+      const value = sessionStorage.getItem(key);
+
+      if (value) {
+        const cleaned = value.trim();
+
+        if (cleaned) {
+          return cleaned.startsWith("Bearer ")
+            ? cleaned.substring(7).trim()
+            : cleaned;
+        }
+      }
+    }
+
+    // --------------------------------------------------------------
+    // 3. Check cyberlab_user
+    // --------------------------------------------------------------
+
+    const storedUser =
+      localStorage.getItem("cyberlab_user");
+
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+
+        const possibleUserTokenKeys = [
+          "token",
+          "accessToken",
+          "access_token",
+          "jwt",
+          "authToken",
+          "auth_token",
+        ];
+
+        for (const key of possibleUserTokenKeys) {
+          const value = parsed?.[key];
+
+          if (
+            typeof value === "string" &&
+            value.trim()
+          ) {
+            const cleaned = value.trim();
+
+            return cleaned.startsWith("Bearer ")
+              ? cleaned.substring(7).trim()
+              : cleaned;
+          }
+        }
+      } catch {
+        // Ignore invalid JSON.
+      }
+    }
+
+    // --------------------------------------------------------------
+    // 4. Last fallback:
+    // Search localStorage for a JWT-looking value.
+    // A JWT normally has three dot-separated sections.
+    // --------------------------------------------------------------
+
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+
+        if (!key) {
+          continue;
+        }
+
+        const value = localStorage.getItem(key);
+
+        if (!value) {
+          continue;
+        }
+
+        const cleaned = value.trim();
+
+        if (
+          cleaned.startsWith("eyJ") &&
+          cleaned.split(".").length === 3
+        ) {
+          return cleaned;
+        }
+
+        // Sometimes the token is inside a JSON object.
+        try {
+          const parsed = JSON.parse(cleaned);
+
+          if (
+            parsed &&
+            typeof parsed === "object"
+          ) {
+            for (const tokenKey of [
+              "token",
+              "accessToken",
+              "access_token",
+              "jwt",
+              "authToken",
+              "auth_token",
+            ]) {
+              const nestedToken =
+                parsed?.[tokenKey];
+
+              if (
+                typeof nestedToken === "string" &&
+                nestedToken.trim()
+              ) {
+                const token =
+                  nestedToken.trim();
+
+                if (
+                  token.startsWith("eyJ") &&
+                  token.split(".").length === 3
+                ) {
+                  return token;
+                }
+              }
+            }
+          }
+        } catch {
+          // Not JSON. Continue searching.
+        }
+      }
+    } catch {
+      // Ignore storage access errors.
+    }
+
+    return null;
+  };
 
   // ================================================================
   // LOAD LAB + CHALLENGE
@@ -126,8 +290,6 @@ export default function ChallengePage() {
           );
         }
 
-        // IMPORTANT:
-        // Backend returns the lab directly.
         const labData: Lab =
           await labResponse.json();
 
@@ -144,63 +306,91 @@ export default function ChallengePage() {
         }
 
         // ==========================================================
-        // GET CHALLENGE (single)
-        // Use the dedicated endpoint to ensure the frontend
-        // can load a challenge even if it's not returned
-        // in the active challenges list.
+        // GET CHALLENGE
         // ==========================================================
 
-        const pluralEndpoint = `${API_URL}/labs/${labId}/challenges/${challengeId}`;
-        const singularEndpoint = `${API_URL}/labs/${labId}/challenge/${challengeId}`;
+        const pluralEndpoint =
+          `${API_URL}/labs/${labId}/challenges/${challengeId}`;
 
-        console.log('Attempting challenge endpoints:', {
-          plural: pluralEndpoint,
-          singular: singularEndpoint,
-        });
+        const singularEndpoint =
+          `${API_URL}/labs/${labId}/challenge/${challengeId}`;
 
-        // Try plural first, then fallback to singular for environments
-        // where the endpoint might be misconfigured.
-        let challengeResponse = await fetch(pluralEndpoint, {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
-        });
+        console.log(
+          "Attempting challenge endpoints:",
+          {
+            plural: pluralEndpoint,
+            singular: singularEndpoint,
+          }
+        );
+
+        let challengeResponse =
+          await fetch(pluralEndpoint, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+          });
 
         if (!challengeResponse.ok) {
-          // If plural 404, try singular as a fallback.
           if (challengeResponse.status === 404) {
-            console.warn('Plural challenge endpoint returned 404, trying singular endpoint');
+            console.warn(
+              "Plural challenge endpoint returned 404, trying singular endpoint"
+            );
 
             try {
-              challengeResponse = await fetch(singularEndpoint, {
-                method: 'GET',
-                headers: { Accept: 'application/json' },
-                cache: 'no-store',
-              });
+              challengeResponse =
+                await fetch(
+                  singularEndpoint,
+                  {
+                    method: "GET",
+                    headers: {
+                      Accept: "application/json",
+                    },
+                    cache: "no-store",
+                  }
+                );
             } catch (e) {
-              console.error('Singular challenge fetch exception:', e);
+              console.error(
+                "Singular challenge fetch exception:",
+                e
+              );
             }
           }
         }
 
         if (!challengeResponse.ok) {
-          let bodyText = '';
+          let bodyText = "";
+
           try {
-            bodyText = await challengeResponse.text();
+            bodyText =
+              await challengeResponse.text();
           } catch (e) {
-            bodyText = `<failed to read body: ${String(e)}>`;
+            bodyText =
+              `<failed to read body: ${String(e)}>`;
           }
 
-          console.error(`Challenge fetch failed: ${challengeResponse.status}`, bodyText);
-          throw new Error(`Failed to load challenge (${challengeResponse.status})`);
+          console.error(
+            `Challenge fetch failed: ${challengeResponse.status}`,
+            bodyText
+          );
+
+          throw new Error(
+            `Failed to load challenge (${challengeResponse.status})`
+          );
         }
 
-        const challengeData = await challengeResponse.json();
+        const challengeData =
+          await challengeResponse.json();
 
-        console.log('Challenge page - challenge:', challengeData);
+        console.log(
+          "Challenge page - challenge:",
+          challengeData
+        );
 
         const foundChallenge =
-          challengeData && challengeData.challenge
+          challengeData &&
+          challengeData.challenge
             ? challengeData.challenge
             : null;
 
@@ -218,18 +408,17 @@ export default function ChallengePage() {
           );
         }
 
-        if (
-          !(
-            foundChallenge.is_active === true ||
-            foundChallenge.is_active === 1 ||
-            String(
-              foundChallenge.is_active
-            ) === "1" ||
-            String(
-              foundChallenge.is_active
-            ).toLowerCase() === "true"
-          )
-        ) {
+        const isActive =
+          foundChallenge.is_active === true ||
+          foundChallenge.is_active === 1 ||
+          String(
+            foundChallenge.is_active
+          ) === "1" ||
+          String(
+            foundChallenge.is_active
+          ).toLowerCase() === "true";
+
+        if (!isActive) {
           throw new Error(
             "This challenge is currently inactive."
           );
@@ -242,7 +431,6 @@ export default function ChallengePage() {
         setLab(labData);
         setChallenge(foundChallenge);
 
-        // Reset challenge-specific UI when navigating between challenges.
         setRevealedHints(0);
         setFlag("");
         setSubmitting(false);
@@ -281,14 +469,18 @@ export default function ChallengePage() {
   // ================================================================
 
   const revealNextHint = () => {
-    const hintCount = challenge?.hints?.length ?? 0;
+    const hintCount =
+      challenge?.hints?.length ?? 0;
 
     if (hintCount === 0) {
       return;
     }
 
     setRevealedHints((current) =>
-      Math.min(current + 1, hintCount)
+      Math.min(
+        current + 1,
+        hintCount
+      )
     );
   };
 
@@ -310,8 +502,14 @@ export default function ChallengePage() {
       setSubmitting(true);
       setSubmissionMessage("");
 
+      // ------------------------------------------------------------
+      // GET USER
+      // ------------------------------------------------------------
+
       const storedUser =
-        localStorage.getItem("cyberlab_user");
+        localStorage.getItem(
+          "cyberlab_user"
+        );
 
       if (!storedUser) {
         setSubmissionMessage(
@@ -320,10 +518,17 @@ export default function ChallengePage() {
         return;
       }
 
-      let user: { id?: number | string };
+      let user: {
+        id?: number | string;
+        token?: string;
+        accessToken?: string;
+        access_token?: string;
+      };
 
       try {
-        user = JSON.parse(storedUser);
+        user = JSON.parse(
+          storedUser
+        );
       } catch {
         setSubmissionMessage(
           "Your login session is invalid. Please log in again."
@@ -333,37 +538,119 @@ export default function ChallengePage() {
 
       const userId = Number(user.id);
 
-      if (!user.id || Number.isNaN(userId) || userId <= 0) {
+      if (
+        !user.id ||
+        Number.isNaN(userId) ||
+        userId <= 0
+      ) {
         setSubmissionMessage(
           "Unable to identify your account. Please log in again."
         );
         return;
       }
 
-      const response = await fetch(
-        `${API_URL}/submissions`,
+      // ------------------------------------------------------------
+      // GET JWT
+      // ------------------------------------------------------------
+
+      const token =
+        getAuthToken();
+
+      if (!token) {
+        console.error(
+          "No authentication token found in localStorage/sessionStorage."
+        );
+
+        setSubmissionMessage(
+          "Your login token is missing. Please log out and log in again."
+        );
+
+        return;
+      }
+
+      console.log(
+        "Submitting authenticated flag request:",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            userId,
-            challengeId: challenge.id,
-            flag: flag.trim(),
-          }),
+          userId,
+          challengeId: challenge.id,
+          hasToken: true,
         }
       );
 
-      const data = await response
-        .json()
-        .catch(() => null);
+      // ------------------------------------------------------------
+      // SUBMIT FLAG
+      // ------------------------------------------------------------
+
+      const response =
+        await fetch(
+          `${API_URL}/submissions`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Accept:
+                "application/json",
+
+              Authorization:
+                `Bearer ${token}`,
+            },
+
+            credentials: "include",
+
+            body: JSON.stringify({
+              userId,
+              challengeId:
+                challenge.id,
+              flag:
+                flag.trim(),
+            }),
+          }
+        );
+
+      const data =
+        await response
+          .json()
+          .catch(() => null);
+
+      console.log(
+        "Submission response:",
+        {
+          status:
+            response.status,
+          ok:
+            response.ok,
+          data,
+        }
+      );
+
+      // ------------------------------------------------------------
+      // UNAUTHORIZED
+      // ------------------------------------------------------------
+
+      if (response.status === 401) {
+        setSubmissionMessage(
+          "Your login session has expired or is invalid. Please log out and log in again."
+        );
+
+        return;
+      }
+
+      // ------------------------------------------------------------
+      // OTHER API ERROR
+      // ------------------------------------------------------------
 
       if (!response.ok) {
-        const message = Array.isArray(data?.message)
-          ? data.message.join(", ")
-          : data?.message;
+        const message =
+          Array.isArray(
+            data?.message
+          )
+            ? data.message.join(
+                ", "
+              )
+            : data?.message;
 
         throw new Error(
           message ||
@@ -371,22 +658,37 @@ export default function ChallengePage() {
         );
       }
 
+      // ------------------------------------------------------------
+      // CHECK RESULT
+      // ------------------------------------------------------------
+
       const correct =
         data?.correct === true ||
         data?.success === true;
 
       if (correct) {
-        setSubmissionCorrect(true);
-        setEarnedPoints(
-          Number(data?.points ?? challenge.points)
+        setSubmissionCorrect(
+          true
         );
+
+        setEarnedPoints(
+          Number(
+            data?.points ??
+              challenge.points
+          )
+        );
+
         setSubmissionMessage(
           data?.message ||
             "Correct flag! Challenge completed."
         );
       } else {
-        setSubmissionCorrect(false);
+        setSubmissionCorrect(
+          false
+        );
+
         setEarnedPoints(null);
+
         setSubmissionMessage(
           data?.message ||
             "Incorrect flag. Try again."
@@ -398,8 +700,12 @@ export default function ChallengePage() {
         err
       );
 
-      setSubmissionCorrect(false);
+      setSubmissionCorrect(
+        false
+      );
+
       setEarnedPoints(null);
+
       setSubmissionMessage(
         err instanceof Error
           ? err.message
@@ -430,7 +736,7 @@ export default function ChallengePage() {
             <div className="h-full w-1/2 animate-pulse rounded-full bg-emerald-400" />
           </div>
         </div>
-    </div>
+      </div>
     );
   }
 
@@ -438,10 +744,14 @@ export default function ChallengePage() {
   // ERROR
   // ================================================================
 
-  if (error || !lab || !challenge) {
+  if (
+    error ||
+    !lab ||
+    !challenge
+  ) {
     return (
-    <div className="w-full h-full">
-      <section className="mx-auto max-w-[800px] px-5 py-20">
+      <div className="w-full h-full">
+        <section className="mx-auto max-w-[800px] px-5 py-20">
           <div className="rounded-2xl border border-red-400/20 bg-[#0a1019] p-10 text-center">
             <div className="font-mono text-xs tracking-wider text-red-400">
               CHALLENGE ERROR
@@ -476,7 +786,7 @@ export default function ChallengePage() {
             </div>
           </div>
         </section>
-    </div>
+      </div>
     );
   }
 
@@ -674,9 +984,12 @@ export default function ChallengePage() {
               {challenge.hints.map(
                 (hint, index) => {
                   const isRevealed =
-                    index < revealedHints;
+                    index <
+                    revealedHints;
+
                   const isNext =
-                    index === revealedHints;
+                    index ===
+                    revealedHints;
 
                   return (
                     <div
@@ -686,7 +999,9 @@ export default function ChallengePage() {
                       <div className="flex items-center justify-between gap-4">
                         <span className="font-mono text-[10px] text-gray-500">
                           HINT{" "}
-                          {String(index + 1).padStart(
+                          {String(
+                            index + 1
+                          ).padStart(
                             2,
                             "0"
                           )}
@@ -764,19 +1079,28 @@ export default function ChallengePage() {
               type="text"
               value={flag}
               onChange={(event) => {
-                setFlag(event.target.value);
+                setFlag(
+                  event.target.value
+                );
 
-                if (!submissionCorrect) {
-                  setSubmissionMessage("");
+                if (
+                  !submissionCorrect
+                ) {
+                  setSubmissionMessage(
+                    ""
+                  );
                 }
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter") {
+                if (
+                  event.key === "Enter"
+                ) {
                   submitFlag();
                 }
               }}
               disabled={
-                submitting || submissionCorrect
+                submitting ||
+                submissionCorrect
               }
               placeholder="CYBERLAB{...}"
               autoComplete="off"
@@ -786,7 +1110,9 @@ export default function ChallengePage() {
 
             <button
               type="button"
-              onClick={submitFlag}
+              onClick={
+                submitFlag
+              }
               disabled={
                 !flag.trim() ||
                 submitting ||
@@ -821,7 +1147,8 @@ export default function ChallengePage() {
               </div>
 
               {submissionCorrect &&
-                earnedPoints !== null && (
+                earnedPoints !==
+                  null && (
                   <div className="mt-2 font-mono text-xs font-semibold text-emerald-400">
                     +{earnedPoints} XP EARNED
                   </div>
@@ -868,20 +1195,27 @@ export default function ChallengePage() {
               "Identify the security weakness.",
               "Exploit the vulnerability in the authorized lab environment.",
               "Submit the flag when you find it.",
-            ].map((item, index) => (
-              <div
-                key={item}
-                className="flex gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
-              >
-                <span className="font-mono text-xs text-emerald-400">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+            ].map(
+              (item, index) => (
+                <div
+                  key={item}
+                  className="flex gap-4 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4"
+                >
+                  <span className="font-mono text-xs text-emerald-400">
+                    {String(
+                      index + 1
+                    ).padStart(
+                      2,
+                      "0"
+                    )}
+                  </span>
 
-                <span className="text-sm text-gray-400">
-                  {item}
-                </span>
-              </div>
-            ))}
+                  <span className="text-sm text-gray-400">
+                    {item}
+                  </span>
+                </div>
+              )
+            )}
           </div>
         </div>
 
