@@ -25,7 +25,6 @@ const NAV_ITEMS = [
       { href: "/admin/users", label: "Users", icon: "◉" },
       { href: "/admin/submissions", label: "Submissions", icon: "✦" },
       { href: "/admin/hints", label: "Hints", icon: "◎" },
-      { href: "/admin/resources", label: "Resources", icon: "▣" },
     ],
   },
 ];
@@ -202,6 +201,7 @@ export default function AdminLayout({
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                 <span className="font-mono text-[8px] text-emerald-500">ONLINE</span>
               </span>
+
             </div>
           </div>
         </div>
@@ -221,6 +221,7 @@ export default function AdminLayout({
                 ? "Dashboard"
                 : pathname.split("/admin/")[1]?.split("/")[0] || ""}
             </span>
+
           </div>
 
           <div className="flex items-center gap-3">
